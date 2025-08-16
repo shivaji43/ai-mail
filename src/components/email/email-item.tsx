@@ -25,21 +25,27 @@ export const EmailItem = memo(function EmailItem({
 
   return (
     <div 
-      className={`border-b-2 border-border hover:bg-accent/50 transition-colors cursor-pointer shadow-sm hover:shadow-md ${
-        email.isUnread 
-          ? 'bg-primary/5 border-l-4 border-l-primary' 
-          : 'bg-card'
-      } ${
-        isSelected 
-          ? 'bg-primary/10 border-l-4 border-l-primary shadow-md' 
+      className={`
+        relative rounded-xl border border-border/50 cursor-pointer
+        backdrop-blur-md backdrop-saturate-150
+        transition-all duration-300 ease-out
+        hover:scale-[1.02] hover:shadow-lg hover:shadow-primary/10
+        hover:border-primary/30 hover:backdrop-blur-lg
+        ${email.isUnread 
+          ? 'bg-primary/10 border-l-4 border-l-primary shadow-md shadow-primary/20' 
+          : 'bg-card/80 shadow-sm'
+        } 
+        ${isSelected 
+          ? 'bg-primary/15 border-l-4 border-l-primary shadow-lg shadow-primary/25 scale-[1.01]' 
           : ''
-      }`}
+        }
+      `}
       onClick={handleClick}
     >
-      <div className="p-5 space-y-3">
-        <div className="flex items-start justify-between">
-          <div className="flex-1 min-w-0 mr-4">
-            <div className="flex items-center space-x-3 mb-2">
+      <div className="p-4 h-full flex flex-col">
+        <div className="flex items-start justify-between flex-1">
+          <div className="flex-1 min-w-0 mr-4 flex flex-col">
+            <div className="flex items-center space-x-3 mb-1">
               <span 
                 className={`font-semibold text-base truncate ${
                   email.isUnread 
@@ -54,7 +60,7 @@ export const EmailItem = memo(function EmailItem({
               )}
             </div>
             
-            <div className="mb-3">
+            <div className="mb-2">
               <span 
                 className={`text-sm font-medium block truncate ${
                   email.isUnread 
@@ -66,12 +72,12 @@ export const EmailItem = memo(function EmailItem({
               </span>
             </div>
             
-            <div className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
+            <div className="text-sm text-muted-foreground line-clamp-2 leading-relaxed flex-1">
               {email.snippet}
             </div>
           </div>
           
-          <div className="flex flex-col items-end space-y-3 flex-shrink-0">
+          <div className="flex flex-col items-end justify-between h-full space-y-2 flex-shrink-0">
             <span className="text-xs text-muted-foreground whitespace-nowrap font-medium">
               {formatDate(email.date)}
             </span>

@@ -34,15 +34,17 @@ const EmailRow = memo(function EmailRow({
   }
 
   return (
-    <div style={style} className="pb-1">
-      <EmailItem
-        email={email}
-        isSelected={selectedEmailId === email.id}
-        onEmailClick={onEmailClick}
-        onStarChange={onStarChange}
-        formatDate={formatDate}
-        extractSenderName={extractSenderName}
-      />
+    <div style={style} className="px-3 pb-3">
+      <div className="h-full">
+        <EmailItem
+          email={email}
+          isSelected={selectedEmailId === email.id}
+          onEmailClick={onEmailClick}
+          onStarChange={onStarChange}
+          formatDate={formatDate}
+          extractSenderName={extractSenderName}
+        />
+      </div>
     </div>
   )
 })
@@ -100,7 +102,7 @@ export const VirtualizedEmailList = memo(function VirtualizedEmailList({
 
   if (emails.length === 0 && !isLoading) {
     return (
-      <div ref={containerRef} className="h-full flex items-center justify-center bg-muted/30 rounded-lg border border-border">
+      <div ref={containerRef} className="h-full flex items-center justify-center bg-gradient-to-br from-background/80 to-muted/50 rounded-lg border border-border/50 backdrop-blur-sm">
         <div className="text-center p-8">
           <div className="text-6xl mb-4">📧</div>
           <p className="text-foreground text-lg">
@@ -116,7 +118,7 @@ export const VirtualizedEmailList = memo(function VirtualizedEmailList({
 
   if (emails.length === 0 && isLoading) {
     return (
-      <div ref={containerRef} className="h-full flex items-center justify-center bg-muted/30 rounded-lg border border-border">
+      <div ref={containerRef} className="h-full flex items-center justify-center bg-gradient-to-br from-background/80 to-muted/50 rounded-lg border border-border/50 backdrop-blur-sm">
         <div className="text-center p-8">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
           <p className="mt-6 text-foreground text-lg">Loading emails...</p>
@@ -129,7 +131,7 @@ export const VirtualizedEmailList = memo(function VirtualizedEmailList({
   }
 
   return (
-    <div ref={containerRef} className="h-full flex flex-col bg-muted/30 rounded-lg border border-border overflow-hidden">
+    <div ref={containerRef} className="h-full flex flex-col bg-gradient-to-br from-background/80 to-muted/50 rounded-lg border border-border/50 overflow-hidden backdrop-blur-sm">
       <div className="flex-1">
         <List
           height={containerHeight}

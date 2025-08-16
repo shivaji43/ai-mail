@@ -188,7 +188,7 @@ export default function EmailsPage() {
               <VirtualizedEmailList
                 emails={currentEmails}
                 height={0} 
-                itemHeight={160} 
+                itemHeight={140} 
                 selectedEmailId={emailSelection.selectedEmailId}
                 onEmailClick={handleEmailClick}
                 onStarChange={handleStarChange}
