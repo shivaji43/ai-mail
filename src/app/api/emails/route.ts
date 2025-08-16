@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const pageToken = searchParams.get('pageToken') || ''
-    const maxResults = parseInt(searchParams.get('maxResults') || '30')
+    const maxResults = parseInt(searchParams.get('400') || '800')
     const category = (searchParams.get('category') || 'inbox') as EmailCategory
 
     // Build query based on category
@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
       nextPageToken: listData.nextPageToken,
       resultSizeEstimate: listData.resultSizeEstimate,
     })
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch emails' },
       { status: 500 }

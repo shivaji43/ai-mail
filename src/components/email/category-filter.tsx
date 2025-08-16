@@ -1,35 +1,26 @@
 "use client"
 
+import { memo, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { EmailCategory } from '@/types/types'
+import { CategoryFilterProps, CategoryDefinition } from '@/types/types'
 
-interface CategoryFilterProps {
-  activeCategory: EmailCategory
-  onCategoryChange: (category: EmailCategory) => void
-  emailCounts: Record<EmailCategory, number>
-  loading: Record<EmailCategory, boolean>
-}
-
-export function CategoryFilter({ 
+export const CategoryFilter = memo(function CategoryFilter({ 
   activeCategory, 
   onCategoryChange, 
   emailCounts, 
   loading 
 }: CategoryFilterProps) {
-  const categories: Array<{
-    id: EmailCategory
-    label: string
-    icon: string
-  }> = [
+  // Memoize categories to prevent recreation on every render
+  const categories: CategoryDefinition[] = useMemo(() => [
     { id: 'inbox', label: 'Inbox', icon: '📥' },
     { id: 'starred', label: 'Starred', icon: '⭐' },
     { id: 'spam', label: 'Spam', icon: '🚫' },
     { id: 'trash', label: 'Trash', icon: '🗑️' },
-  ]
+  ], [])
 
   return (
-    <div className="flex gap-2 p-4 bg-white dark:bg-gray-800 border-b">
+    <div className="flex gap-2 p-4 bg-card border-b border-border">
       {categories.map((category) => (
         <Button
           key={category.id}
@@ -53,4 +44,6 @@ export function CategoryFilter({
       ))}
     </div>
   )
-} 
+})
+
+CategoryFilter.displayName = 'CategoryFilter' 

@@ -34,11 +34,11 @@ export async function POST(
     })
 
     if (!modifyResponse.ok) {
-      const errorText = await modifyResponse.text()
+      throw new Error(`Gmail API error: ${modifyResponse.status}`)
     }
 
     return NextResponse.json({ success: true })
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: 'Failed to mark email as read' },
       { status: 500 }

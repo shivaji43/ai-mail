@@ -39,7 +39,7 @@ export async function POST(
     }
 
     return NextResponse.json({ success: true, starred })
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: 'Failed to update star status' },
       { status: 500 }

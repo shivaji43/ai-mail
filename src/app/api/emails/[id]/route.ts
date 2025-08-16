@@ -29,14 +29,13 @@ export async function GET(
     })
 
     if (!messageResponse.ok) {
-      const errorText = await messageResponse.text()
       throw new Error(`Gmail API error: ${messageResponse.status} ${messageResponse.statusText}`)
     }
 
     const messageData: GmailMessageResponse = await messageResponse.json()
     const emailContent = parseEmailContent(messageData)
     return NextResponse.json(emailContent)
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch email content' },
       { status: 500 }
@@ -133,7 +132,7 @@ function extractAttachments(payload: GmailPayload): EmailAttachment[] {
 function decodeBase64(data: string): string {
   try {
     return Buffer.from(data.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8')
-  } catch (error) {
+  } catch {
     return 'Failed to decode content'
   }
 } 

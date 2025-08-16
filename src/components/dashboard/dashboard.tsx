@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { ThemeToggle } from "@/components/theme/theme-toggle"
 
 export function Dashboard() {
   const { data: session } = useSession()
@@ -14,26 +15,27 @@ export function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 shadow-sm border-b">
+              <header className="bg-card shadow-sm border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+              <h1 className="text-2xl font-bold text-foreground">
                 AI Mail
               </h1>
               <Badge variant="secondary">Beta</Badge>
             </div>
             
             <div className="flex items-center space-x-4">
+              <ThemeToggle />
               <Avatar className="h-8 w-8">
                 <AvatarImage src={session.user?.image || ""} alt={session.user?.name || ""} />
                 <AvatarFallback>
                   {session.user?.name?.charAt(0).toUpperCase() || "U"}
                 </AvatarFallback>
               </Avatar>
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              <span className="text-sm font-medium text-foreground">
                 {session.user?.name}
               </span>
               <Button variant="outline" size="sm" onClick={() => signOut()}>
