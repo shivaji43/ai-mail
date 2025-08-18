@@ -42,8 +42,6 @@ export async function POST(request: NextRequest) {
       labelFilterBehavior
     }
 
-    console.log('📧 Setting up Gmail watch for:', session.user?.email)
-    console.log('📧 Watch request:', watchRequest)
 
     // Call Gmail API to set up watch
     const watchResponse = await fetch('https://www.googleapis.com/gmail/v1/users/me/watch', {
@@ -77,10 +75,6 @@ export async function POST(request: NextRequest) {
 
     const watchData: GmailWatchResponse = await watchResponse.json()
     
-    console.log('📧 Gmail watch setup successful:', {
-      historyId: watchData.historyId,
-      expiration: new Date(parseInt(watchData.expiration)).toISOString()
-    })
 
     return NextResponse.json({
       success: true,
@@ -143,7 +137,6 @@ export async function DELETE() {
       )
     }
 
-    console.log('📧 Stopping Gmail watch for:', session.user?.email)
 
     const stopResponse = await fetch('https://www.googleapis.com/gmail/v1/users/me/stop', {
       method: 'POST',
@@ -166,7 +159,6 @@ export async function DELETE() {
       )
     }
 
-    console.log('📧 Gmail watch stopped successfully')
 
     return NextResponse.json({
       success: true,

@@ -176,7 +176,6 @@ export function useEmails(): UseEmailsReturn {
       if (!forceRefresh) {
         const cachedData = getCachedEmailList(category, pageToken, userId)
         if (cachedData && !append) {
-          console.log(`📧 Using cached data for ${category} (${cachedData.messages.length} emails)`)
           
           dispatchEmails({ type: 'SET_EMAILS', category, emails: cachedData.messages })
           dispatchPageTokens({
@@ -212,7 +211,6 @@ export function useEmails(): UseEmailsReturn {
       const data: EmailsResponse & { cached?: boolean; responseTime?: number; historyId?: string } = await response.json()
       
       if (data.responseTime) {
-        console.log(`📧 Fetched ${data.messages.length} emails for ${category} in ${data.responseTime}ms ${data.cached ? '(server cached)' : '(fresh)'}`)
       }
       
       if (!data.cached && !append) {
@@ -234,7 +232,6 @@ export function useEmails(): UseEmailsReturn {
       // Store the historyId for future history API calls (only for first page)
       if (data.historyId && !pageToken && session?.user?.email) {
         localStorage.setItem(`lastHistoryId_${session.user.email}`, data.historyId)
-        console.log('📧 Stored initial historyId:', data.historyId)
       }
     } catch (error) {
       console.error('Failed to fetch emails:', error)
@@ -258,13 +255,11 @@ export function useEmails(): UseEmailsReturn {
     if (!session?.accessToken) return
 
     try {
-      console.log('📧 Fetching new emails from history:', historyId)
       
       // Get the last known historyId from localStorage
       const lastHistoryId = localStorage.getItem(`lastHistoryId_${session.user?.email}`)
       
       if (!lastHistoryId) {
-        console.log('📧 No previous historyId found, doing full refresh instead')
         return refreshEmails(category)
       }
       
@@ -281,7 +276,6 @@ export function useEmails(): UseEmailsReturn {
         localStorage.setItem(`lastHistoryId_${session.user?.email}`, data.historyId)
         
         if (data.hasChanges && data.newMessages.length > 0) {
-          console.log('📧 Adding', data.newMessages.length, 'new emails to top of list')
           
           // Add new emails to the top of the list
           for (const email of data.newMessages.reverse()) { // Reverse to maintain chronological order
@@ -292,7 +286,6 @@ export function useEmails(): UseEmailsReturn {
             })
           }
         } else {
-          console.log('📧 No new messages found in history')
         }
       }
     } catch (error) {
@@ -306,7 +299,6 @@ export function useEmails(): UseEmailsReturn {
     if (!session?.accessToken) return
 
     try {
-      console.log('📧 Fetching new email for real-time update:', messageId)
       
       const response = await fetch(`/api/emails/single/${messageId}`)
       
@@ -317,7 +309,6 @@ export function useEmails(): UseEmailsReturn {
       const data = await response.json()
       
       if (data.success && data.email) {
-        console.log('📧 Adding new email to top of list:', data.email.subject)
         
         // Add the new email to the top of the list
         dispatchEmails({ 

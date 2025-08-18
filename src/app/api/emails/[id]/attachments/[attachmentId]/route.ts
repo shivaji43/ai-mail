@@ -18,7 +18,6 @@ export async function GET(
 
     const { id: messageId, attachmentId } = await params
     
-    // Get attachment from Gmail API
     const attachmentUrl = `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}/attachments/${attachmentId}`
     
     const attachmentResponse = await fetch(attachmentUrl, {
@@ -38,13 +37,11 @@ export async function GET(
       throw new Error('No attachment data found')
     }
 
-    // Decode base64url data
     const binaryData = Buffer.from(
       attachmentData.data.replace(/-/g, '+').replace(/_/g, '/'), 
       'base64'
     )
 
-    // Get filename from query params for proper response headers
     const url = new URL(request.url)
     const filename = url.searchParams.get('filename') || 'attachment'
     const mimeType = url.searchParams.get('mimeType') || 'application/octet-stream'
@@ -64,3 +61,4 @@ export async function GET(
     )
   }
 }
+

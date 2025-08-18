@@ -19,8 +19,7 @@ import { ThemeToggle } from '@/components/theme/theme-toggle'
 export default function EmailsPage() {
   const { data: session, status } = useSession()
   const [activeCategory, setActiveCategory] = useState<EmailCategory>('inbox')
-  
-  // Use optimized hooks
+
   const {
     emails,
     loading,
@@ -43,11 +42,9 @@ export default function EmailsPage() {
     setupWatch
   } = useGmailNotifications()
 
-  // Handle real-time email updates
   const handleEmailUpdate = useCallback((historyId?: string, messageId?: string) => {
-    console.log('📧 Real-time update received:', { historyId, messageId, activeCategory })
+    console.log('Real-time update received:', { historyId, messageId, activeCategory })
     if (activeCategory === 'inbox' && historyId) {
-      // Use the history API to fetch only new messages
       fetchNewEmailsFromHistory(historyId, 'inbox')
     }
   }, [activeCategory, fetchNewEmailsFromHistory])
@@ -57,16 +54,14 @@ export default function EmailsPage() {
     enabled: isWatchActive
   })
 
-  // Debug logging for real-time updates
   useEffect(() => {
-    console.log('📧 Real-time update system status:', {
+    console.log('Real-time update system status:', {
       isWatchActive,
       isUpdateStreamConnected,
       activeCategory
     })
   }, [isWatchActive, isUpdateStreamConnected, activeCategory])
 
-  // Memoized stable callback functions
   const formatDate = useCallback((dateString: string) => {
     try {
       return new Intl.DateTimeFormat('en-US', {
@@ -101,15 +96,14 @@ export default function EmailsPage() {
       })
 
       if (response.ok) {
-        // Update email in all categories
         dispatchEmails({
           type: 'UPDATE_EMAIL_ALL_CATEGORIES',
           emailId,
           updates: { 
             isStarred: starred,
             labelIds: starred 
-              ? ['STARRED'] // Simplified - would need current labelIds in real implementation
-              : [] // Simplified - would need to filter out STARRED properly
+              ? ['STARRED'] 
+              : []
           }
         })
       }
@@ -121,7 +115,6 @@ export default function EmailsPage() {
   const handleCategoryChange = useCallback((category: EmailCategory) => {
     setActiveCategory(category)
     
-    // Fetch emails for the category if not already loaded
     if (emails[category].length === 0 && !loading[category]) {
       fetchEmailsForCategory(category)
     }
@@ -140,7 +133,6 @@ export default function EmailsPage() {
     }
   }, [activeCategory, loading, refreshEmails])
 
-  // Memoize current emails and derived state
   const currentEmails = useMemo(() => 
     emails[activeCategory] || [], 
     [emails, activeCategory]
@@ -149,50 +141,44 @@ export default function EmailsPage() {
   const isLoading = loading[activeCategory]
   const hasMore = !!pageTokens[activeCategory]
 
-  // Initial load effect
   useEffect(() => {
     if (session && emails.inbox.length === 0 && !loading.inbox) {
       fetchEmailsForCategory('inbox')
     }
   }, [session, emails.inbox.length, loading.inbox, fetchEmailsForCategory])
 
-  // Setup Gmail push notifications instead of polling
   useEffect(() => {
     if (!session || !session.user?.email) return
 
-    // Only setup if not already active and we're viewing inbox
     if (!isWatchActive && activeCategory === 'inbox' && !isSettingUp) {
-      // Use your actual Google Cloud project ID
       const topicName = process.env.NEXT_PUBLIC_GMAIL_TOPIC_NAME || 'projects/zero-455106/topics/gmail-notifications'
       
-      console.log('🔔 Setting up Gmail push notifications for real-time updates...')
+      console.log('Setting up Gmail push notifications for real-time updates...')
       setupWatch(topicName).then(success => {
         if (success) {
-          console.log('🔔 Gmail push notifications enabled - no more polling needed!')
+          console.log('Gmail push notifications enabled - no more polling needed!')
         } else {
-          console.log('⚠️ Gmail push notifications failed - falling back to manual refresh')
+          console.log('Gmail push notifications failed - falling back to manual refresh')
         }
       })
     }
   }, [session, activeCategory, isWatchActive, isSettingUp, setupWatch])
 
-  // Fallback: Auto-refresh inbox every 5 minutes only if push notifications are not active
   useEffect(() => {
     if (!session || activeCategory !== 'inbox' || isWatchActive) return
 
-    console.log('⚠️ Push notifications not active, using fallback polling every 5 minutes')
+    console.log('Push notifications not active, using fallback polling every 5 minutes')
     
     const interval = setInterval(() => {
       if (!loading.inbox) {
-        console.log('🔄 Fallback: Auto-refreshing inbox for new emails...')
+        console.log('Fallback: Auto-refreshing inbox for new emails...')
         refreshEmails('inbox')
       }
-    }, 5 * 60 * 1000) // 5 minutes as fallback
+    }, 5 * 60 * 1000)
 
     return () => clearInterval(interval)
   }, [session, activeCategory, loading.inbox, refreshEmails, isWatchActive])
 
-  // Loading state
   if (status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -204,7 +190,6 @@ export default function EmailsPage() {
     )
   }
 
-  // Unauthenticated state
   if (!session) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -227,8 +212,7 @@ export default function EmailsPage() {
 
   return (
     <div className="h-screen bg-background flex flex-col">
-      {/* Header */}
-              <header className="bg-card shadow-sm border-b border-border flex-shrink-0">
+      <header className="bg-card shadow-sm border-b border-border flex-shrink-0">
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
@@ -237,7 +221,6 @@ export default function EmailsPage() {
               </h1>
             </div>
             <div className="flex items-center space-x-3">
-              {/* Gmail Push Notifications Status */}
               <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-muted/50 text-xs">
                 <div className={`w-2 h-2 rounded-full ${
                   isWatchActive && isUpdateStreamConnected ? 'bg-green-500' : 
@@ -277,7 +260,6 @@ export default function EmailsPage() {
         </div>
       </header>
 
-      {/* Category Filter */}
       <CategoryFilter 
         activeCategory={activeCategory}
         onCategoryChange={handleCategoryChange}
@@ -285,10 +267,8 @@ export default function EmailsPage() {
         loading={loading}
       />
 
-      {/* Main Content */}
       <main className="flex-1 overflow-hidden">
         <div className="h-full flex gap-4 p-4 sm:p-6 lg:p-8">
-          {/* Email List */}
           <div className="w-2/5 flex flex-col min-h-0">
             <div className="flex-1 min-h-0">
               <VirtualizedEmailList
@@ -307,7 +287,6 @@ export default function EmailsPage() {
             </div>
           </div>
 
-          {/* Email Content Panel */}
           <div className="w-3/5">
             <Card className="h-full flex flex-col">
               <CardHeader className="flex-shrink-0 flex flex-row items-center justify-between">
@@ -395,4 +374,4 @@ export default function EmailsPage() {
       </main>
     </div>
   )
-} 
+}

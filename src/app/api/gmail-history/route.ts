@@ -24,7 +24,6 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    console.log('📧 Fetching Gmail history from:', startHistoryId)
 
     // Fetch history changes
     const historyUrl = `https://gmail.googleapis.com/gmail/v1/users/me/history?startHistoryId=${startHistoryId}&labelId=INBOX`
@@ -49,10 +48,6 @@ export async function GET(request: NextRequest) {
 
     const historyData: GmailHistoryResponse = await historyResponse.json()
     
-    console.log('📧 History response:', {
-      historyId: historyData.historyId,
-      historyCount: historyData.history?.length || 0
-    })
 
     // Extract new message IDs from messagesAdded
     const newMessageIds: string[] = []
@@ -70,7 +65,6 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    console.log('📧 Found new message IDs:', newMessageIds)
 
     // Fetch details for new messages
     const newMessages: EmailMessage[] = []
@@ -123,7 +117,6 @@ export async function GET(request: NextRequest) {
       newMessages.push(...messageResults.filter((msg): msg is EmailMessage => msg !== null))
     }
 
-    console.log('📧 Fetched new messages:', newMessages.length)
 
     return NextResponse.json({
       success: true,

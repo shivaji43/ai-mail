@@ -48,7 +48,6 @@ export function AttachmentDownload({ emailId, attachment, variant = 'badge' }: A
         throw new Error('Failed to download attachment')
       }
 
-      // Create blob and download
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -107,3 +106,4 @@ export function AttachmentDownload({ emailId, attachment, variant = 'badge' }: A
     </Badge>
   )
 }
+

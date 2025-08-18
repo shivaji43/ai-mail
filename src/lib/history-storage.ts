@@ -9,7 +9,6 @@ export function getLastHistoryId(userEmail: string): string | undefined {
 
 export function setLastHistoryId(userEmail: string, historyId: string): void {
   historyIdStorage.set(userEmail, historyId)
-  console.log('📧 Updated historyId for', userEmail, ':', historyId)
 }
 
 export function hasHistoryId(userEmail: string): boolean {

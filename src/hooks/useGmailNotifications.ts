@@ -27,7 +27,6 @@ export function useGmailNotifications(): UseGmailNotificationsReturn {
 
     // Prevent repeated attempts if we recently failed (wait 5 minutes)
     if (lastFailedAttempt && Date.now() - lastFailedAttempt < 5 * 60 * 1000) {
-      console.log('🔔 Skipping Gmail watch setup - recent failure, will retry later')
       return false
     }
 
@@ -35,7 +34,6 @@ export function useGmailNotifications(): UseGmailNotificationsReturn {
     setError(null)
 
     try {
-      console.log('🔔 Setting up Gmail push notifications...')
       
       const response = await fetch('/api/gmail-watch', {
         method: 'POST',
@@ -60,10 +58,6 @@ export function useGmailNotifications(): UseGmailNotificationsReturn {
       setIsWatchActive(true)
       setWatchExpiration(watchData.expirationDate)
       
-      console.log('🔔 Gmail push notifications setup successful:', {
-        historyId: watchData.historyId,
-        expiration: watchData.expirationDate
-      })
 
       // Store watch info in localStorage for persistence
       localStorage.setItem('gmail_watch', JSON.stringify({
@@ -84,7 +78,7 @@ export function useGmailNotifications(): UseGmailNotificationsReturn {
     } finally {
       setIsSettingUp(false)
     }
-  }, [session])
+  }, [session, lastFailedAttempt])
 
   const stopWatch = useCallback(async (): Promise<boolean> => {
     if (!session?.accessToken) {
@@ -93,7 +87,6 @@ export function useGmailNotifications(): UseGmailNotificationsReturn {
     }
 
     try {
-      console.log('🔔 Stopping Gmail push notifications...')
       
       const response = await fetch('/api/gmail-watch', {
         method: 'DELETE',
@@ -108,7 +101,6 @@ export function useGmailNotifications(): UseGmailNotificationsReturn {
       setIsWatchActive(false)
       setWatchExpiration(null)
       
-      console.log('🔔 Gmail push notifications stopped')
 
       // Remove from localStorage
       localStorage.removeItem('gmail_watch')
@@ -138,11 +130,9 @@ export function useGmailNotifications(): UseGmailNotificationsReturn {
         if (expiration > now && watchData.active) {
           setIsWatchActive(true)
           setWatchExpiration(watchData.expiration)
-          console.log('🔔 Found existing Gmail watch, expires:', watchData.expiration)
         } else {
           // Clean up expired watch
           localStorage.removeItem('gmail_watch')
-          console.log('🔔 Cleaned up expired Gmail watch')
         }
       }
     } catch (err) {
@@ -164,7 +154,6 @@ export function useGmailNotifications(): UseGmailNotificationsReturn {
       const storedWatch = localStorage.getItem('gmail_watch')
       if (storedWatch) {
         const watchData = JSON.parse(storedWatch)
-        console.log('🔔 Auto-renewing Gmail watch...')
         setupWatch(watchData.topicName)
       }
     }

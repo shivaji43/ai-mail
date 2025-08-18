@@ -19,7 +19,6 @@ export async function GET(
 
     const { messageId } = await params
 
-    console.log('📧 Fetching single email:', messageId)
 
     // Fetch the specific message
     const messageUrl = `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`
@@ -62,11 +61,6 @@ export async function GET(
       internalDate: messageData.internalDate,
     }
 
-    console.log('📧 Single email fetched successfully:', {
-      id: emailMessage.id,
-      subject: emailMessage.subject,
-      from: emailMessage.from
-    })
 
     return NextResponse.json({
       success: true,

@@ -19,7 +19,6 @@ export async function GET(
 
     const { id: emailId, contentId } = await params
     
-    // First get the email to find the attachment with this contentId
     const messageUrl = `https://gmail.googleapis.com/gmail/v1/users/me/messages/${emailId}?format=full`
     
     const messageResponse = await fetch(messageUrl, {
@@ -35,11 +34,9 @@ export async function GET(
 
     const messageData: GmailMessageResponse = await messageResponse.json()
     
-    // Find the attachment with the matching contentId
     function findAttachmentByContentId(payload: InlineContentPayload, targetContentId: string): InlineAttachmentResult | null {
       if (payload.parts) {
         for (const part of payload.parts) {
-          // Check headers for Content-ID
           const headers = part.headers || []
           const contentIdHeader = headers.find((h: GmailHeader) => 
             h.name.toLowerCase() === 'content-id' && 
@@ -53,7 +50,6 @@ export async function GET(
             }
           }
           
-          // Recursively search in nested parts
           if (part.parts) {
             const found = findAttachmentByContentId(part, targetContentId)
             if (found) return found
@@ -72,7 +68,6 @@ export async function GET(
       )
     }
 
-    // Get the attachment data
     const attachmentUrl = `https://gmail.googleapis.com/gmail/v1/users/me/messages/${emailId}/attachments/${attachment.attachmentId}`
     
     const attachmentResponse = await fetch(attachmentUrl, {
@@ -87,14 +82,12 @@ export async function GET(
 
     const attachmentData = await attachmentResponse.json()
     
-    // Decode the base64 data
     const imageData = Buffer.from(attachmentData.data.replace(/-/g, '+').replace(/_/g, '/'), 'base64')
     
-    // Return the image with appropriate headers
     return new NextResponse(imageData, {
       headers: {
         'Content-Type': attachment.mimeType,
-        'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
+        'Cache-Control': 'public, max-age=3600',
         'Content-Length': imageData.length.toString(),
       },
     })
@@ -107,3 +100,4 @@ export async function GET(
     )
   }
 }
+
