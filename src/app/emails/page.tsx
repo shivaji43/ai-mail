@@ -4,27 +4,30 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { EmailMessage, EmailCategory } from '@/types/types'
 import { EmailContent as EmailContentComponent } from '@/components/email/email-content'
 import { CategoryFilter } from '@/components/email/category-filter'
 import { StarButton } from '@/components/email/star-button'
 import { VirtualizedEmailList } from '@/components/email/virtualized-email-list'
+import { AttachmentDownload } from '@/components/email/attachment-download'
 import { useEmails } from '@/hooks/useEmails'
 import { useEmailContent } from '@/hooks/useEmailContent'
+import { useGmailNotifications } from '@/hooks/useGmailNotifications'
+import { useEmailUpdates } from '@/hooks/useEmailUpdates'
 import { ThemeToggle } from '@/components/theme/theme-toggle'
 
 export default function EmailsPage() {
   const { data: session, status } = useSession()
   const [activeCategory, setActiveCategory] = useState<EmailCategory>('inbox')
-  
-  // Use optimized hooks
+
   const {
     emails,
     loading,
     pageTokens,
     dispatchEmails,
     fetchEmailsForCategory,
+    refreshEmails,
+    fetchNewEmailsFromHistory,
     emailCounts
   } = useEmails()
 
@@ -33,7 +36,32 @@ export default function EmailsPage() {
     fetchEmailContent
   } = useEmailContent(dispatchEmails)
 
-  // Memoized stable callback functions
+  const {
+    isWatchActive,
+    isSettingUp,
+    setupWatch
+  } = useGmailNotifications()
+
+  const handleEmailUpdate = useCallback((historyId?: string, messageId?: string) => {
+    console.log('Real-time update received:', { historyId, messageId, activeCategory })
+    if (activeCategory === 'inbox' && historyId) {
+      fetchNewEmailsFromHistory(historyId, 'inbox')
+    }
+  }, [activeCategory, fetchNewEmailsFromHistory])
+
+  const { isConnected: isUpdateStreamConnected } = useEmailUpdates({
+    onEmailUpdate: handleEmailUpdate,
+    enabled: isWatchActive
+  })
+
+  useEffect(() => {
+    console.log('Real-time update system status:', {
+      isWatchActive,
+      isUpdateStreamConnected,
+      activeCategory
+    })
+  }, [isWatchActive, isUpdateStreamConnected, activeCategory])
+
   const formatDate = useCallback((dateString: string) => {
     try {
       return new Intl.DateTimeFormat('en-US', {
@@ -68,15 +96,14 @@ export default function EmailsPage() {
       })
 
       if (response.ok) {
-        // Update email in all categories
         dispatchEmails({
           type: 'UPDATE_EMAIL_ALL_CATEGORIES',
           emailId,
           updates: { 
             isStarred: starred,
             labelIds: starred 
-              ? ['STARRED'] // Simplified - would need current labelIds in real implementation
-              : [] // Simplified - would need to filter out STARRED properly
+              ? ['STARRED'] 
+              : []
           }
         })
       }
@@ -88,7 +115,6 @@ export default function EmailsPage() {
   const handleCategoryChange = useCallback((category: EmailCategory) => {
     setActiveCategory(category)
     
-    // Fetch emails for the category if not already loaded
     if (emails[category].length === 0 && !loading[category]) {
       fetchEmailsForCategory(category)
     }
@@ -101,7 +127,12 @@ export default function EmailsPage() {
     }
   }, [activeCategory, pageTokens, loading, fetchEmailsForCategory])
 
-  // Memoize current emails and derived state
+  const handleRefresh = useCallback(() => {
+    if (!loading[activeCategory]) {
+      refreshEmails(activeCategory)
+    }
+  }, [activeCategory, loading, refreshEmails])
+
   const currentEmails = useMemo(() => 
     emails[activeCategory] || [], 
     [emails, activeCategory]
@@ -110,14 +141,44 @@ export default function EmailsPage() {
   const isLoading = loading[activeCategory]
   const hasMore = !!pageTokens[activeCategory]
 
-  // Initial load effect
   useEffect(() => {
     if (session && emails.inbox.length === 0 && !loading.inbox) {
       fetchEmailsForCategory('inbox')
     }
   }, [session, emails.inbox.length, loading.inbox, fetchEmailsForCategory])
 
-  // Loading state
+  useEffect(() => {
+    if (!session || !session.user?.email) return
+
+    if (!isWatchActive && activeCategory === 'inbox' && !isSettingUp) {
+      const topicName = process.env.NEXT_PUBLIC_GMAIL_TOPIC_NAME || 'projects/zero-455106/topics/gmail-notifications'
+      
+      console.log('Setting up Gmail push notifications for real-time updates...')
+      setupWatch(topicName).then(success => {
+        if (success) {
+          console.log('Gmail push notifications enabled - no more polling needed!')
+        } else {
+          console.log('Gmail push notifications failed - falling back to manual refresh')
+        }
+      })
+    }
+  }, [session, activeCategory, isWatchActive, isSettingUp, setupWatch])
+
+  useEffect(() => {
+    if (!session || activeCategory !== 'inbox' || isWatchActive) return
+
+    console.log('Push notifications not active, using fallback polling every 5 minutes')
+    
+    const interval = setInterval(() => {
+      if (!loading.inbox) {
+        console.log('Fallback: Auto-refreshing inbox for new emails...')
+        refreshEmails('inbox')
+      }
+    }, 5 * 60 * 1000)
+
+    return () => clearInterval(interval)
+  }, [session, activeCategory, loading.inbox, refreshEmails, isWatchActive])
+
   if (status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -129,7 +190,6 @@ export default function EmailsPage() {
     )
   }
 
-  // Unauthenticated state
   if (!session) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -152,8 +212,7 @@ export default function EmailsPage() {
 
   return (
     <div className="h-screen bg-background flex flex-col">
-      {/* Header */}
-              <header className="bg-card shadow-sm border-b border-border flex-shrink-0">
+      <header className="bg-card shadow-sm border-b border-border flex-shrink-0">
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
@@ -162,6 +221,36 @@ export default function EmailsPage() {
               </h1>
             </div>
             <div className="flex items-center space-x-3">
+              <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-muted/50 text-xs">
+                <div className={`w-2 h-2 rounded-full ${
+                  isWatchActive && isUpdateStreamConnected ? 'bg-green-500' : 
+                  isWatchActive ? 'bg-yellow-500' :
+                  isSettingUp ? 'bg-yellow-500 animate-pulse' : 'bg-gray-400'
+                }`} />
+                <span className="text-muted-foreground">
+                  {isWatchActive && isUpdateStreamConnected ? 'Live' : 
+                   isWatchActive ? 'Watch Active' :
+                   isSettingUp ? 'Setting up...' : 'Manual'}
+                </span>
+              </div>
+
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleRefresh}
+                disabled={loading[activeCategory]}
+                className="flex items-center gap-2"
+              >
+                <svg 
+                  className={`w-4 h-4 ${loading[activeCategory] ? 'animate-spin' : ''}`} 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                {loading[activeCategory] ? 'Refreshing...' : 'Refresh'}
+              </Button>
               <ThemeToggle />
               <Button variant="outline" onClick={() => window.location.href = '/'}>
                 Back to Dashboard
@@ -171,7 +260,6 @@ export default function EmailsPage() {
         </div>
       </header>
 
-      {/* Category Filter */}
       <CategoryFilter 
         activeCategory={activeCategory}
         onCategoryChange={handleCategoryChange}
@@ -179,16 +267,14 @@ export default function EmailsPage() {
         loading={loading}
       />
 
-      {/* Main Content */}
       <main className="flex-1 overflow-hidden">
-        <div className="h-full flex gap-6 p-4 sm:p-6 lg:p-8">
-          {/* Email List */}
-          <div className="w-1/2 flex flex-col min-h-0">
+        <div className="h-full flex gap-4 p-4 sm:p-6 lg:p-8">
+          <div className="w-2/5 flex flex-col min-h-0">
             <div className="flex-1 min-h-0">
               <VirtualizedEmailList
                 emails={currentEmails}
                 height={0} 
-                itemHeight={140} 
+                itemHeight={120} 
                 selectedEmailId={emailSelection.selectedEmailId}
                 onEmailClick={handleEmailClick}
                 onStarChange={handleStarChange}
@@ -201,8 +287,7 @@ export default function EmailsPage() {
             </div>
           </div>
 
-          {/* Email Content Panel */}
-          <div className="w-1/2">
+          <div className="w-3/5">
             <Card className="h-full flex flex-col">
               <CardHeader className="flex-shrink-0 flex flex-row items-center justify-between">
                 <CardTitle>Email Details</CardTitle>
@@ -255,9 +340,12 @@ export default function EmailsPage() {
                           </p>
                           <div className="flex flex-wrap gap-2">
                             {emailSelection.selectedEmailContent.attachments.map((attachment, index) => (
-                              <Badge key={index} variant="secondary" className="text-xs">
-                                📎 {attachment.filename}
-                              </Badge>
+                              <AttachmentDownload
+                                key={index}
+                                emailId={emailSelection.selectedEmailContent!.id}
+                                attachment={attachment}
+                                variant="badge"
+                              />
                             ))}
                           </div>
                         </div>
@@ -268,6 +356,7 @@ export default function EmailsPage() {
                       <EmailContentComponent
                         htmlContent={emailSelection.selectedEmailContent.bodyHtml}
                         textContent={emailSelection.selectedEmailContent.body}
+                        emailId={emailSelection.selectedEmailContent.id}
                       />
                     </div>
                   </div>
@@ -285,4 +374,4 @@ export default function EmailsPage() {
       </main>
     </div>
   )
-} 
+}

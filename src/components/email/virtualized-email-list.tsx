@@ -5,10 +5,6 @@ import { FixedSizeList as List, ListChildComponentProps } from 'react-window'
 import { EmailItem } from './email-item'
 import { VirtualizedEmailListProps } from '@/types/types'
 import { Button } from '@/components/ui/button'
-
-/**
- * Row component for react-window
- */
 const EmailRow = memo(function EmailRow({ 
   index, 
   style, 
@@ -51,9 +47,7 @@ const EmailRow = memo(function EmailRow({
 
 EmailRow.displayName = 'EmailRow'
 
-/**
- * Virtualized email list component for optimal performance with large datasets
- */
+
 export const VirtualizedEmailList = memo(function VirtualizedEmailList({
   emails,
   itemHeight,
@@ -69,12 +63,11 @@ export const VirtualizedEmailList = memo(function VirtualizedEmailList({
   const containerRef = useRef<HTMLDivElement>(null)
   const [containerHeight, setContainerHeight] = useState(600)
 
-  // Calculate container height dynamically
   useEffect(() => {
     const updateHeight = () => {
       if (containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect()
-        const newHeight = rect.height - (hasMore ? 70 : 0) // Account for load more button
+        const newHeight = rect.height - (hasMore ? 70 : 0)
         setContainerHeight(Math.max(newHeight, 200))
       }
     }
@@ -84,7 +77,6 @@ export const VirtualizedEmailList = memo(function VirtualizedEmailList({
     return () => window.removeEventListener('resize', updateHeight)
   }, [hasMore])
 
-  // Data passed to each row
   const itemData = {
     emails,
     selectedEmailId,
@@ -132,9 +124,9 @@ export const VirtualizedEmailList = memo(function VirtualizedEmailList({
 
   return (
     <div ref={containerRef} className="h-full flex flex-col bg-gradient-to-br from-background/80 to-muted/50 rounded-lg border border-border/50 overflow-hidden backdrop-blur-sm">
-      <div className="flex-1">
+      <div className="flex-1 pt-3">
         <List
-          height={containerHeight}
+          height={containerHeight - 12}
           itemCount={emails.length}
           itemSize={itemHeight}
           itemData={itemData}

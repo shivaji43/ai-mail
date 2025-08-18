@@ -46,7 +46,6 @@ export async function GET(
 function parseEmailContent(messageData: GmailMessageResponse): EmailContent {
   const headers = messageData.payload?.headers || []
   
-  // Extract headers
   const subject = headers.find(h => h.name === 'Subject')?.value || 'No Subject'
   const from = headers.find(h => h.name === 'From')?.value || 'Unknown Sender'
   const to = headers.find(h => h.name === 'To')?.value || ''
@@ -109,12 +108,16 @@ function extractAttachments(payload: GmailPayload): EmailAttachment[] {
   
   function processAttachmentPart(part: GmailPart) {
     if (part.filename && part.body?.attachmentId) {
-      attachments.push({
-        filename: part.filename,
-        mimeType: part.mimeType || 'application/octet-stream',
-        size: part.body.size || 0,
-        attachmentId: part.body.attachmentId,
-      })
+      const isInline = isInlineAttachment(part)
+      
+      if (!isInline) {
+        attachments.push({
+          filename: part.filename,
+          mimeType: part.mimeType || 'application/octet-stream',
+          size: part.body.size || 0,
+          attachmentId: part.body.attachmentId,
+        })
+      }
     }
     
     if (part.parts) {
@@ -127,6 +130,28 @@ function extractAttachments(payload: GmailPayload): EmailAttachment[] {
   }
   
   return attachments
+}
+
+function isInlineAttachment(part: GmailPart): boolean {
+  const headers = part.headers || []
+  
+  const contentDisposition = headers.find(h => 
+    h.name.toLowerCase() === 'content-disposition'
+  )?.value?.toLowerCase()
+  
+  const contentId = headers.find(h => 
+    h.name.toLowerCase() === 'content-id'
+  )?.value
+  
+  const xAttachmentId = headers.find(h => 
+    h.name.toLowerCase() === 'x-attachment-id'
+  )?.value
+  
+  const hasInlineDisposition = contentDisposition?.includes('inline')
+  const hasContentId = !!contentId
+  const hasXAttachmentId = !!xAttachmentId
+
+  return hasInlineDisposition || hasContentId || hasXAttachmentId
 }
 
 function decodeBase64(data: string): string {
