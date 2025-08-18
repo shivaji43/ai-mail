@@ -13,9 +13,6 @@ const initialEmailSelection: EmailSelectionState = {
   error: null
 }
 
-/**
- * Custom hook for managing email content with caching
- */
 export function useEmailContent(dispatchEmails?: React.Dispatch<EmailsAction>): UseEmailContentReturn {
   const [emailSelection, setEmailSelection] = useState<EmailSelectionState>(initialEmailSelection)
   const [emailCache, setEmailCache] = useState<Map<string, EmailContent>>(new Map())
@@ -26,7 +23,6 @@ export function useEmailContent(dispatchEmails?: React.Dispatch<EmailsAction>): 
         method: 'POST',
       })
       
-      // Update the email state to mark as read
       if (dispatchEmails) {
         dispatchEmails({
           type: 'MARK_EMAIL_AS_READ',
@@ -34,13 +30,11 @@ export function useEmailContent(dispatchEmails?: React.Dispatch<EmailsAction>): 
         })
       }
     } catch (error) {
-      // Silently fail - don't crash the app
       console.error('Failed to mark email as read:', error)
     }
   }, [dispatchEmails])
 
   const fetchEmailContent = useCallback(async (emailId: string): Promise<void> => {
-    // Check cache first
     if (emailCache.has(emailId)) {
       const cachedContent = emailCache.get(emailId)!
       setEmailSelection({
@@ -74,7 +68,6 @@ export function useEmailContent(dispatchEmails?: React.Dispatch<EmailsAction>): 
         throw new Error('Invalid email content received')
       }
       
-      // Update cache
       setEmailCache(prev => new Map(prev).set(emailId, emailContent))
       
       setEmailSelection({
@@ -84,7 +77,6 @@ export function useEmailContent(dispatchEmails?: React.Dispatch<EmailsAction>): 
         error: null,
       })
 
-      // Mark as read
       await markEmailAsRead(emailId)
     } catch (err) {
       setEmailSelection(prev => ({

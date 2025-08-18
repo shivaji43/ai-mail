@@ -11,7 +11,6 @@ export const CategoryFilter = memo(function CategoryFilter({
   emailCounts, 
   loading 
 }: CategoryFilterProps) {
-  // Memoize categories to prevent recreation on every render
   const categories: CategoryDefinition[] = useMemo(() => [
     { id: 'inbox', label: 'Inbox', icon: '📥' },
     { id: 'starred', label: 'Starred', icon: '⭐' },

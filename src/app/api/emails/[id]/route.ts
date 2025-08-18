@@ -109,12 +109,18 @@ function extractAttachments(payload: GmailPayload): EmailAttachment[] {
   
   function processAttachmentPart(part: GmailPart) {
     if (part.filename && part.body?.attachmentId) {
-      attachments.push({
-        filename: part.filename,
-        mimeType: part.mimeType || 'application/octet-stream',
-        size: part.body.size || 0,
-        attachmentId: part.body.attachmentId,
-      })
+      // Check if this is an inline attachment
+      const isInline = isInlineAttachment(part)
+      
+      // Only include non-inline attachments for download
+      if (!isInline) {
+        attachments.push({
+          filename: part.filename,
+          mimeType: part.mimeType || 'application/octet-stream',
+          size: part.body.size || 0,
+          attachmentId: part.body.attachmentId,
+        })
+      }
     }
     
     if (part.parts) {
@@ -127,6 +133,39 @@ function extractAttachments(payload: GmailPayload): EmailAttachment[] {
   }
   
   return attachments
+}
+
+function isInlineAttachment(part: GmailPart): boolean {
+  const headers = part.headers || []
+  
+  // Check for Content-Disposition header
+  const contentDisposition = headers.find(h => 
+    h.name.toLowerCase() === 'content-disposition'
+  )?.value?.toLowerCase()
+  
+  // Check for Content-ID header (indicates inline image)
+  const contentId = headers.find(h => 
+    h.name.toLowerCase() === 'content-id'
+  )?.value
+  
+  // Check for X-Attachment-Id header
+  const xAttachmentId = headers.find(h => 
+    h.name.toLowerCase() === 'x-attachment-id'
+  )?.value
+  
+  // Inline if:
+  // 1. Content-Disposition is "inline"
+  // 2. Has Content-ID (used for cid: references in HTML)
+  // 3. Has X-Attachment-Id (Gmail's inline indicator)
+  // 4. Is an image with a generic/generated filename
+  const hasInlineDisposition = contentDisposition?.includes('inline')
+  const hasContentId = !!contentId
+  const hasXAttachmentId = !!xAttachmentId
+  const isGeneratedImageName = !!(part.mimeType?.startsWith('image/') && 
+    (part.filename?.match(/^(image|img|attachment)\d*\.(jpg|jpeg|png|gif|webp)$/i) ||
+     part.filename?.match(/^[a-f0-9-]{8,}$/i))) // UUID-like filenames
+  
+  return hasInlineDisposition || hasContentId || hasXAttachmentId || isGeneratedImageName
 }
 
 function decodeBase64(data: string): string {

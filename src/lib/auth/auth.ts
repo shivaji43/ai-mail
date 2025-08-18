@@ -1,8 +1,8 @@
 import { NextAuthOptions } from "next-auth"
 import GoogleProvider from "next-auth/providers/google"
-import "@/types/types"
+import { ExtendedJWT } from "@/types/types"
 
-async function refreshAccessToken(token: { refreshToken?: string; accessToken?: string; accessTokenExpires?: number }) {
+async function refreshAccessToken(token: ExtendedJWT): Promise<ExtendedJWT> {
   try {
     if (!token.refreshToken) {
       throw new Error('No refresh token available')
@@ -33,12 +33,14 @@ async function refreshAccessToken(token: { refreshToken?: string; accessToken?: 
       ...token,
       accessToken: refreshedTokens.access_token,
       accessTokenExpires: Date.now() + refreshedTokens.expires_in * 1000,
-      refreshToken: refreshedTokens.refresh_token ?? token.refreshToken, // Fall back to old refresh token
+      refreshToken: refreshedTokens.refresh_token ?? token.refreshToken,
+      error: undefined,
     }
   } catch {
     return {
       ...token,
-      error: "RefreshAccessTokenError" as const,
+      error: "RefreshAccessTokenError",
+      accessToken: undefined,
     }
   }
 }
@@ -66,22 +68,44 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async jwt({ token, account, user }) {
+      const extendedToken = token as ExtendedJWT
+
       if (account && user) {
         return {
+          ...extendedToken,
           accessToken: account.access_token,
           refreshToken: account.refresh_token,
           accessTokenExpires: account.expires_at ? account.expires_at * 1000 : 0,
           user,
-        }
+          error: undefined,
+        } as ExtendedJWT
       }
 
-      if (Date.now() < (token.accessTokenExpires as number)) {
-        return token
+      // If token has error, return it to trigger re-authentication
+      if (extendedToken.error) {
+        return extendedToken as ExtendedJWT
       }
-      return await refreshAccessToken(token)
+
+      // If token is still valid, return it
+      if (extendedToken.accessTokenExpires && Date.now() < extendedToken.accessTokenExpires) {
+        return extendedToken as ExtendedJWT
+      }
+
+      // Try to refresh the token
+      const refreshedToken = await refreshAccessToken(extendedToken)
+      return refreshedToken as ExtendedJWT
     },
     async session({ session, token }) {
-      session.accessToken = token.accessToken
+      const extendedToken = token as ExtendedJWT
+      
+      // If token has error, don't provide access token to trigger re-auth
+      if (extendedToken.error) {
+        session.accessToken = undefined
+        session.error = extendedToken.error
+      } else {
+        session.accessToken = extendedToken.accessToken
+        session.error = undefined
+      }
       return session
     },
   },
@@ -91,5 +115,9 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: "jwt",
+    maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
+  },
+  jwt: {
+    maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
   },
 } 
