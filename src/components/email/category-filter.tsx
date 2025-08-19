@@ -19,7 +19,7 @@ export const CategoryFilter = memo(function CategoryFilter({
   ], [])
 
   return (
-    <div className="flex gap-2 p-4 bg-card border-b border-border">
+    <div className="flex gap-2 p-4 bg-card border-b-4 border-gray-800 dark:border-gray-200">
       {categories.map((category) => (
         <Button
           key={category.id}
@@ -27,7 +27,7 @@ export const CategoryFilter = memo(function CategoryFilter({
           size="sm"
           onClick={() => onCategoryChange(category.id)}
           disabled={loading[category.id]}
-          className="flex items-center gap-2"
+          className="flex items-center gap-1 relative border-2"
         >
           <span>{category.icon}</span>
           <span>{category.label}</span>

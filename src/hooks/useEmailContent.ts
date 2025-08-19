@@ -34,6 +34,39 @@ export function useEmailContent(dispatchEmails?: React.Dispatch<EmailsAction>): 
     }
   }, [dispatchEmails])
 
+  const updateEmailStarStatus = useCallback((emailId: string, starred: boolean): void => {
+    // Update selection panel if this email is currently selected
+    setEmailSelection(prev => {
+      if (prev.selectedEmailId === emailId && prev.selectedEmailContent) {
+        const updatedLabelIds = starred
+          ? Array.from(new Set([...(prev.selectedEmailContent.labelIds || []), 'STARRED']))
+          : (prev.selectedEmailContent.labelIds || []).filter(l => l !== 'STARRED')
+
+        return {
+          ...prev,
+          selectedEmailContent: {
+            ...prev.selectedEmailContent,
+            isStarred: starred,
+            labelIds: updatedLabelIds
+          }
+        }
+      }
+      return prev
+    })
+
+    // Update cache entry if present
+    setEmailCache(prev => {
+      const cached = prev.get(emailId)
+      if (!cached) return prev
+      const updatedLabelIds = starred
+        ? Array.from(new Set([...(cached.labelIds || []), 'STARRED']))
+        : (cached.labelIds || []).filter(l => l !== 'STARRED')
+      const next = new Map(prev)
+      next.set(emailId, { ...cached, isStarred: starred, labelIds: updatedLabelIds })
+      return next
+    })
+  }, [])
+
   const fetchEmailContent = useCallback(async (emailId: string): Promise<void> => {
     if (emailCache.has(emailId)) {
       const cachedContent = emailCache.get(emailId)!
@@ -96,6 +129,7 @@ export function useEmailContent(dispatchEmails?: React.Dispatch<EmailsAction>): 
     emailCache,
     fetchEmailContent,
     markEmailAsRead,
+    updateEmailStarStatus,
     clearSelection
   }
 } 

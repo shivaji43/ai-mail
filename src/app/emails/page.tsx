@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmailMessage, EmailCategory } from '@/types/types'
+import { updateCachesOnStarChange } from '@/lib/cache'
 import { EmailContent as EmailContentComponent } from '@/components/email/email-content'
 import { CategoryFilter } from '@/components/email/category-filter'
 import { StarButton } from '@/components/email/star-button'
@@ -33,7 +34,8 @@ export default function EmailsPage() {
 
   const {
     emailSelection,
-    fetchEmailContent
+    fetchEmailContent,
+    updateEmailStarStatus
   } = useEmailContent(dispatchEmails)
 
   const {
@@ -85,6 +87,80 @@ export default function EmailsPage() {
     fetchEmailContent(email.id)
   }, [fetchEmailContent])
 
+  const handleTrashClick = useCallback(async (emailId: string) => {
+    try {
+      const isInTrash = activeCategory === 'trash'
+      const endpoint = isInTrash ? `/api/emails/${emailId}/untrash` : `/api/emails/${emailId}/trash`
+      
+      const response = await fetch(endpoint, {
+        method: 'POST',
+      })
+
+      if (response.ok) {
+        // Remove from current category
+        dispatchEmails({ type: 'REMOVE_EMAIL', category: activeCategory, emailId })
+        
+        const emailToMove = emails[activeCategory].find(e => e.id === emailId)
+        if (emailToMove) {
+          if (isInTrash) {
+            // Remove from trash - move back to inbox
+            const restoredEmail: EmailMessage = {
+              ...emailToMove,
+              labelIds: ['INBOX']
+            }
+            dispatchEmails({ type: 'PREPEND_EMAIL', category: 'inbox', email: restoredEmail })
+          } else {
+            // Move to trash
+            const trashedEmail: EmailMessage = {
+              ...emailToMove,
+              labelIds: ['TRASH']
+            }
+            dispatchEmails({ type: 'PREPEND_EMAIL', category: 'trash', email: trashedEmail })
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to handle trash action:', error)
+    }
+  }, [emails, activeCategory, dispatchEmails])
+
+  const handleSpamClick = useCallback(async (emailId: string) => {
+    try {
+      const isInSpam = activeCategory === 'spam'
+      const endpoint = isInSpam ? `/api/emails/${emailId}/unspam` : `/api/emails/${emailId}/spam`
+      
+      const response = await fetch(endpoint, {
+        method: 'POST',
+      })
+
+      if (response.ok) {
+        // Remove from current category
+        dispatchEmails({ type: 'REMOVE_EMAIL', category: activeCategory, emailId })
+        
+        const emailToMove = emails[activeCategory].find(e => e.id === emailId)
+        if (emailToMove) {
+          if (isInSpam) {
+            // Mark as not spam - move back to inbox
+            const restoredEmail: EmailMessage = {
+              ...emailToMove,
+              labelIds: ['INBOX']
+            }
+            dispatchEmails({ type: 'PREPEND_EMAIL', category: 'inbox', email: restoredEmail })
+          } else {
+            // Mark as spam
+            const spammedEmail: EmailMessage = {
+              ...emailToMove,
+              labelIds: ['SPAM']
+            }
+            dispatchEmails({ type: 'PREPEND_EMAIL', category: 'spam', email: spammedEmail })
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to handle spam action:', error)
+    }
+  }, [emails, activeCategory, dispatchEmails])
+
   const handleStarChange = useCallback(async (emailId: string, starred: boolean) => {
     try {
       const response = await fetch(`/api/emails/${emailId}/star`, {
@@ -96,21 +172,85 @@ export default function EmailsPage() {
       })
 
       if (response.ok) {
-        dispatchEmails({
-          type: 'UPDATE_EMAIL_ALL_CATEGORIES',
-          emailId,
-          updates: { 
-            isStarred: starred,
-            labelIds: starred 
-              ? ['STARRED'] 
-              : []
+        // 1) Update selected email panel + cache
+        updateEmailStarStatus(emailId, starred)
+
+        // 2) Update labelIds and isStarred for any category where this email exists
+        const categories: EmailCategory[] = ['inbox', 'starred', 'spam', 'trash']
+        let sourceEmail: EmailMessage | undefined
+        categories.forEach((category) => {
+          const existing = emails[category].find(e => e.id === emailId)
+          if (existing) {
+            if (!sourceEmail) sourceEmail = existing
+            const updatedLabelIds = starred
+              ? Array.from(new Set([...(existing.labelIds || []), 'STARRED']))
+              : (existing.labelIds || []).filter(l => l !== 'STARRED')
+
+            dispatchEmails({
+              type: 'UPDATE_EMAIL',
+              category,
+              emailId,
+              updates: { isStarred: starred, labelIds: updatedLabelIds }
+            })
           }
         })
+
+        // 3) Move between category lists
+        if (starred) {
+          // Ensure it appears in the starred list
+          const alreadyInStarred = emails.starred.some(e => e.id === emailId)
+          if (!alreadyInStarred && sourceEmail) {
+            const updatedForStarred: EmailMessage = {
+              ...sourceEmail,
+              isStarred: true,
+              labelIds: Array.from(new Set([...(sourceEmail.labelIds || []), 'STARRED']))
+            }
+            dispatchEmails({ type: 'PREPEND_EMAIL', category: 'starred', email: updatedForStarred })
+          }
+          // Remove from inbox so it "moves" to Starred in the UI
+          const existsInInbox = emails.inbox.some(e => e.id === emailId)
+          if (existsInInbox) {
+            dispatchEmails({ type: 'REMOVE_EMAIL', category: 'inbox', emailId })
+          }
+        } else {
+          // Ensure it disappears from the starred list
+          const existsInStarred = emails.starred.some(e => e.id === emailId)
+          if (existsInStarred) {
+            dispatchEmails({ type: 'REMOVE_EMAIL', category: 'starred', emailId })
+          }
+          // Optionally ensure presence in inbox only if it has INBOX label
+          const inInbox = emails.inbox.some(e => e.id === emailId)
+          const reference = sourceEmail || emails.starred.find(e => e.id === emailId)
+          if (!inInbox && reference && (reference.labelIds || []).includes('INBOX')) {
+            const updatedForInbox: EmailMessage = {
+              ...reference,
+              isStarred: false,
+              labelIds: (reference.labelIds || []).filter(l => l !== 'STARRED')
+            }
+            dispatchEmails({ type: 'PREPEND_EMAIL', category: 'inbox', email: updatedForInbox })
+          }
+        }
+        
+        // 4) Update cached lists for inbox/starred to reflect the change
+        try {
+          const userId: string | undefined = session?.user?.email || undefined
+          const base = sourceEmail || emails.starred.find(e => e.id === emailId) || emails.inbox.find(e => e.id === emailId)
+          if (base) {
+            const updatedForCache: EmailMessage = {
+              ...base,
+              isStarred: starred,
+              labelIds: starred
+                ? Array.from(new Set([...(base.labelIds || []), 'STARRED']))
+                : (base.labelIds || []).filter(l => l !== 'STARRED')
+            }
+            updateCachesOnStarChange(updatedForCache, starred, userId)
+          }
+        } catch {}
       }
     } catch (error) {
       console.error('Failed to update star:', error)
     }
-  }, [dispatchEmails])
+  }, [emails, dispatchEmails, updateEmailStarStatus, session])
 
   const handleCategoryChange = useCallback((category: EmailCategory) => {
     setActiveCategory(category)
@@ -212,7 +352,7 @@ export default function EmailsPage() {
 
   return (
     <div className="h-screen bg-background flex flex-col">
-      <header className="bg-card shadow-sm border-b border-border flex-shrink-0">
+      <header className="bg-card shadow-sm border-b-4 border-gray-800 dark:border-gray-200 flex-shrink-0">
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
@@ -239,7 +379,7 @@ export default function EmailsPage() {
                 size="sm"
                 onClick={handleRefresh}
                 disabled={loading[activeCategory]}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 border-2"
               >
                 <svg 
                   className={`w-4 h-4 ${loading[activeCategory] ? 'animate-spin' : ''}`} 
@@ -252,7 +392,7 @@ export default function EmailsPage() {
                 {loading[activeCategory] ? 'Refreshing...' : 'Refresh'}
               </Button>
               <ThemeToggle />
-              <Button variant="outline" onClick={() => window.location.href = '/'}>
+              <Button variant="outline" className="border-2" onClick={() => window.location.href = '/'}>
                 Back to Dashboard
               </Button>
             </div>
@@ -274,10 +414,13 @@ export default function EmailsPage() {
               <VirtualizedEmailList
                 emails={currentEmails}
                 height={0} 
-                itemHeight={120} 
+                itemHeight={48} 
+                currentCategory={activeCategory}
                 selectedEmailId={emailSelection.selectedEmailId}
                 onEmailClick={handleEmailClick}
                 onStarChange={handleStarChange}
+                onTrashClick={handleTrashClick}
+                onSpamClick={handleSpamClick}
                 formatDate={formatDate}
                 extractSenderName={extractSenderName}
                 isLoading={isLoading}
@@ -288,7 +431,7 @@ export default function EmailsPage() {
           </div>
 
           <div className="w-3/5">
-            <Card className="h-full flex flex-col">
+            <Card className="h-full flex flex-col border-4 border-gray-800 dark:border-gray-200">
               <CardHeader className="flex-shrink-0 flex flex-row items-center justify-between">
                 <CardTitle>Email Details</CardTitle>
                 {emailSelection.selectedEmailContent && (

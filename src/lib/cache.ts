@@ -1,4 +1,4 @@
-import { CacheEntry, CacheOptions, EmailsApiResponse } from '@/types/types'
+import { CacheEntry, CacheOptions, EmailsApiResponse, EmailMessage } from '@/types/types'
 
 class CacheManager {
   private memoryCache = new Map<string, CacheEntry<EmailsApiResponse>>()
@@ -165,6 +165,65 @@ class CacheManager {
       localStorageSize,
       sessionStorageSize
     }
+  }
+}
+
+// Update cached first-page lists on star/unstar so switching categories stays consistent
+export const updateCachesOnStarChange = (
+  email: EmailMessage,
+  starred: boolean,
+  userId?: string
+): void => {
+  try {
+    type UpdateableCategory = 'inbox' | 'starred'
+    const updateCategory = (category: UpdateableCategory, transformer: (messages: EmailMessage[]) => EmailMessage[]) => {
+      const cached = getCachedEmailList(category, undefined, userId)
+      if (!cached) return
+      const updatedMessages = transformer(cached.messages)
+      const updated: EmailsApiResponse = {
+        ...cached,
+        messages: updatedMessages
+      }
+      cacheEmailList(category, updated, undefined, userId)
+    }
+
+    if (starred) {
+      // Remove from inbox cache
+      updateCategory('inbox', (messages) => messages.filter(m => m.id !== email.id))
+
+      // Add/update at top in starred cache
+      const ensureStarred = (m: EmailMessage): EmailMessage => ({
+        ...m,
+        isStarred: true,
+        labelIds: Array.from(new Set([...(m.labelIds || []), 'STARRED']))
+      })
+      updateCategory('starred', (messages) => {
+        const exists = messages.some(m => m.id === email.id)
+        if (exists) {
+          return messages.map(m => (m.id === email.id ? ensureStarred(m) : m))
+        }
+        return [ensureStarred(email), ...messages]
+      })
+    } else {  
+      updateCategory('starred', (messages) => messages.filter(m => m.id !== email.id))
+
+      // Add/update in inbox cache only if email has INBOX label
+      const hasInbox = (email.labelIds || []).includes('INBOX')
+      if (hasInbox) {
+        const ensureUnstarred = (m: EmailMessage): EmailMessage => ({
+          ...m,
+          isStarred: false,
+          labelIds: (m.labelIds || []).filter(l => l !== 'STARRED')
+        })
+        updateCategory('inbox', (messages) => {
+          const without = messages.filter(m => m.id !== email.id)
+          // Prepend updated email to top
+          return [ensureUnstarred(email), ...without]
+        })
+      }
+    }
+  } catch {
+    // Best-effort cache update; ignore errors
   }
 }
 

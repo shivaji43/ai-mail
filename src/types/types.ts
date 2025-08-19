@@ -232,12 +232,14 @@ export type PageTokensAction =
   | { type: 'CLEAR_TOKEN'; category: EmailCategory }
   | { type: 'CLEAR_ALL_TOKENS' }
 
-// Component prop types
 export interface EmailItemProps {
   email: EmailMessage
   isSelected: boolean
+  currentCategory: EmailCategory
   onEmailClick: (email: EmailMessage) => void
   onStarChange: (emailId: string, starred: boolean) => void
+  onTrashClick?: (emailId: string) => void
+  onSpamClick?: (emailId: string) => void
   formatDate: (date: string) => string
   extractSenderName: (from: string) => string
 }
@@ -246,9 +248,12 @@ export interface VirtualizedEmailListProps {
   emails: EmailMessage[]
   height: number
   itemHeight: number
+  currentCategory: EmailCategory
   selectedEmailId: string | null
   onEmailClick: (email: EmailMessage) => void
   onStarChange: (emailId: string, starred: boolean) => void
+  onTrashClick?: (emailId: string) => void
+  onSpamClick?: (emailId: string) => void
   formatDate: (date: string) => string
   extractSenderName: (from: string) => string
   isLoading?: boolean
@@ -258,9 +263,12 @@ export interface VirtualizedEmailListProps {
 
 export interface EmailRowData {
   emails: EmailMessage[]
+  currentCategory: EmailCategory
   selectedEmailId: string | null
   onEmailClick: (email: EmailMessage) => void
   onStarChange: (emailId: string, starred: boolean) => void
+  onTrashClick?: (emailId: string) => void
+  onSpamClick?: (emailId: string) => void
   formatDate: (date: string) => string
   extractSenderName: (from: string) => string
 }
@@ -459,5 +467,6 @@ export interface UseEmailContentReturn {
   emailCache: Map<string, EmailContent>
   fetchEmailContent: (emailId: string) => Promise<void>
   markEmailAsRead: (emailId: string) => Promise<void>
+  updateEmailStarStatus: (emailId: string, starred: boolean) => void
   clearSelection: () => void
-} 
+}
