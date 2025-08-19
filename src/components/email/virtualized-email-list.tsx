@@ -5,6 +5,7 @@ import { FixedSizeList as List, ListChildComponentProps } from 'react-window'
 import { EmailItem } from './email-item'
 import { VirtualizedEmailListProps } from '@/types/types'
 import { Button } from '@/components/ui/button'
+import { Progress } from '@/components/ui/progress'
 const EmailRow = memo(function EmailRow({ 
   index, 
   style, 
@@ -12,9 +13,12 @@ const EmailRow = memo(function EmailRow({
 }: ListChildComponentProps) {
   const {
     emails,
+    currentCategory,
     selectedEmailId,
     onEmailClick,
     onStarChange,
+    onTrashClick,
+    onSpamClick,
     formatDate,
     extractSenderName
   } = data
@@ -30,17 +34,18 @@ const EmailRow = memo(function EmailRow({
   }
 
   return (
-    <div style={style} className="px-3 pb-3">
-      <div className="h-full">
-        <EmailItem
-          email={email}
-          isSelected={selectedEmailId === email.id}
-          onEmailClick={onEmailClick}
-          onStarChange={onStarChange}
-          formatDate={formatDate}
-          extractSenderName={extractSenderName}
-        />
-      </div>
+    <div style={style}>
+      <EmailItem
+        email={email}
+        currentCategory={currentCategory}
+        isSelected={selectedEmailId === email.id}
+        onEmailClick={onEmailClick}
+        onStarChange={onStarChange}
+        onTrashClick={onTrashClick}
+        onSpamClick={onSpamClick}
+        formatDate={formatDate}
+        extractSenderName={extractSenderName}
+      />
     </div>
   )
 })
@@ -51,9 +56,12 @@ EmailRow.displayName = 'EmailRow'
 export const VirtualizedEmailList = memo(function VirtualizedEmailList({
   emails,
   itemHeight,
+  currentCategory,
   selectedEmailId,
   onEmailClick,
   onStarChange,
+  onTrashClick,
+  onSpamClick,
   formatDate,
   extractSenderName,
   isLoading = false,
@@ -79,9 +87,12 @@ export const VirtualizedEmailList = memo(function VirtualizedEmailList({
 
   const itemData = {
     emails,
+    currentCategory,
     selectedEmailId,
     onEmailClick,
     onStarChange,
+    onTrashClick,
+    onSpamClick,
     formatDate,
     extractSenderName
   }
@@ -94,7 +105,7 @@ export const VirtualizedEmailList = memo(function VirtualizedEmailList({
 
   if (emails.length === 0 && !isLoading) {
     return (
-      <div ref={containerRef} className="h-full flex items-center justify-center bg-gradient-to-br from-background/80 to-muted/50 rounded-lg border border-border/50 backdrop-blur-sm">
+      <div ref={containerRef} className="h-full flex items-center justify-center bg-gradient-to-br from-background/80 to-muted/50 rounded-lg border-2 border-gray-800 dark:border-gray-200 backdrop-blur-sm">
         <div className="text-center p-8">
           <div className="text-6xl mb-4">📧</div>
           <p className="text-foreground text-lg">
@@ -110,10 +121,12 @@ export const VirtualizedEmailList = memo(function VirtualizedEmailList({
 
   if (emails.length === 0 && isLoading) {
     return (
-      <div ref={containerRef} className="h-full flex items-center justify-center bg-gradient-to-br from-background/80 to-muted/50 rounded-lg border border-border/50 backdrop-blur-sm">
-        <div className="text-center p-8">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-6 text-foreground text-lg">Loading emails...</p>
+      <div ref={containerRef} className="h-full flex items-center justify-center bg-gradient-to-br from-background/80 to-muted/50 rounded-lg border-2 border-gray-800 dark:border-gray-200 backdrop-blur-sm">
+        <div className="text-center p-8 w-full max-w-md">
+          <div className="mb-6">
+            <Progress value={undefined} className="w-full h-2" />
+          </div>
+          <p className="mt-4 text-foreground text-lg">Loading emails...</p>
           <p className="text-muted-foreground text-sm mt-2">
             Please wait while we fetch your messages.
           </p>
@@ -123,8 +136,8 @@ export const VirtualizedEmailList = memo(function VirtualizedEmailList({
   }
 
   return (
-    <div ref={containerRef} className="h-full flex flex-col bg-gradient-to-br from-background/80 to-muted/50 rounded-lg border border-border/50 overflow-hidden backdrop-blur-sm">
-      <div className="flex-1 pt-3">
+    <div ref={containerRef} className="h-full flex flex-col bg-gradient-to-br from-background/80 to-muted/50 rounded-lg border-4 border-gray-800 dark:border-gray-200 overflow-hidden backdrop-blur-sm">
+      <div className="flex-1 ">
         <List
           height={containerHeight - 12}
           itemCount={emails.length}
@@ -138,18 +151,18 @@ export const VirtualizedEmailList = memo(function VirtualizedEmailList({
       </div>
       
       {hasMore && (
-        <div className="flex-shrink-0 border-t border-border bg-muted/50">
+        <div className="flex-shrink-0 border-t-4 border-gray-700 dark:border-gray-300 bg-muted/50">
           <div className="text-center p-4">
             <Button
               onClick={handleLoadMore}
               disabled={isLoading}
               variant="outline"
               size="sm"
-              className="min-w-[120px]"
+              className="min-w-[120px] border-2"
             >
               {isLoading ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                  <Progress value={undefined} className="w-4 h-1 mr-2" />
                   Loading...
                 </>
               ) : (
