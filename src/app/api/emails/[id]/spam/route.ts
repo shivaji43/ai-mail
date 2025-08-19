@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth/auth'
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -13,9 +13,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const emailId = params.id
-
-    // Mark email as spam using Gmail API
+    const { id: emailId } = await context.params
     const response = await fetch(
       `https://gmail.googleapis.com/gmail/v1/users/me/messages/${emailId}/modify`,
       {
