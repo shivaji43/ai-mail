@@ -1,9 +1,8 @@
-import { NextRequest } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth/auth'
 import { addConnection, removeConnection } from '@/lib/sse-notifications'
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   const session = await getServerSession(authOptions)
   
   if (!session?.user?.email) {

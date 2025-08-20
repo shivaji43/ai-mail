@@ -3,6 +3,7 @@
 import { signIn, signOut, useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import Image from "next/image"
 
 export function AuthButton() {
   const { data: session, status } = useSession()
@@ -27,9 +28,11 @@ export function AuthButton() {
         <CardContent>
           <div className="flex items-center space-x-4">
             {session.user?.image && (
-              <img
+              <Image
                 src={session.user.image}
                 alt="Profile"
+                width={40}
+                height={40}
                 className="w-10 h-10 rounded-full"
               />
             )}

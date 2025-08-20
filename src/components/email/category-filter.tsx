@@ -3,7 +3,7 @@
 import { memo, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { CategoryFilterProps, CategoryDefinition } from '@/types/types'
+import { CategoryFilterProps, CategoryDefinition, EmailCategory } from '@/types/types'
 
 export const CategoryFilter = memo(function CategoryFilter({ 
   activeCategory, 
@@ -13,15 +13,15 @@ export const CategoryFilter = memo(function CategoryFilter({
   isSearchMode = false
 }: CategoryFilterProps) {
   const categories: CategoryDefinition[] = useMemo(() => {
-    const baseCategories = [
-      { id: 'inbox', label: 'Inbox', icon: '📥' },
-      { id: 'starred', label: 'Starred', icon: '⭐' },
-      { id: 'spam', label: 'Spam', icon: '🚫' },
-      { id: 'trash', label: 'Trash', icon: '🗑️' },
+    const baseCategories: CategoryDefinition[] = [
+      { id: 'inbox' as EmailCategory, label: 'Inbox', icon: '📥' },
+      { id: 'starred' as EmailCategory, label: 'Starred', icon: '⭐' },
+      { id: 'spam' as EmailCategory, label: 'Spam', icon: '🚫' },
+      { id: 'trash' as EmailCategory, label: 'Trash', icon: '🗑️' },
     ]
     
     if (isSearchMode) {
-      baseCategories.push({ id: 'search', label: 'Search Results', icon: '🔍' })
+      baseCategories.push({ id: 'search' as EmailCategory, label: 'Search Results', icon: '🔍' })
     }
     
     return baseCategories

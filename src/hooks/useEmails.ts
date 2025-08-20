@@ -9,7 +9,8 @@ import {
   PageTokensAction,
   EmailCategory,
   EmailsResponse,
-  UseEmailsReturn
+  UseEmailsReturn,
+  EmailMessage
 } from '@/types/types'
 import { getCachedEmailList, cacheEmailList, clearEmailCacheForCategory } from '@/lib/cache'
 const initialEmailsState: EmailsState = {

@@ -476,3 +476,14 @@ export interface UseEmailContentReturn {
   updateEmailStarStatus: (emailId: string, starred: boolean) => void
   clearSelection: () => void
 }
+
+// Email Search Component Props
+export interface EmailSearchProps {
+  onSearch: (query: string) => void
+  onClear: () => void
+  placeholder?: string
+  isSearching?: boolean
+  searchQuery?: string
+  enableAutoSearch?: boolean
+  autoSearchDelay?: number
+}

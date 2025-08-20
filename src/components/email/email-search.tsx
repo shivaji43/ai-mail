@@ -5,16 +5,7 @@ import { Search, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useDebounced } from '@/hooks/useDebounced'
-
-interface EmailSearchProps {
-  onSearch: (query: string) => void
-  onClear: () => void
-  placeholder?: string
-  isSearching?: boolean
-  searchQuery?: string
-  enableAutoSearch?: boolean
-  autoSearchDelay?: number
-}
+import { EmailSearchProps } from '@/types/types'
 
 export function EmailSearch({ 
   onSearch, 
