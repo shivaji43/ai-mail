@@ -11,6 +11,7 @@ import { CategoryFilter } from '@/components/email/category-filter'
 import { StarButton } from '@/components/email/star-button'
 import { VirtualizedEmailList } from '@/components/email/virtualized-email-list'
 import { AttachmentDownload } from '@/components/email/attachment-download'
+import { EmailSearch } from '@/components/email/email-search'
 import { useEmails } from '@/hooks/useEmails'
 import { useEmailContent } from '@/hooks/useEmailContent'
 import { useGmailNotifications } from '@/hooks/useGmailNotifications'
@@ -20,6 +21,8 @@ import { ThemeToggle } from '@/components/theme/theme-toggle'
 export default function EmailsPage() {
   const { data: session, status } = useSession()
   const [activeCategory, setActiveCategory] = useState<EmailCategory>('inbox')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [isSearchMode, setIsSearchMode] = useState(false)
 
   const {
     emails,
@@ -29,6 +32,7 @@ export default function EmailsPage() {
     fetchEmailsForCategory,
     refreshEmails,
     fetchNewEmailsFromHistory,
+    searchEmails,
     emailCounts
   } = useEmails()
 
@@ -253,19 +257,29 @@ export default function EmailsPage() {
   }, [emails, dispatchEmails, updateEmailStarStatus, session])
 
   const handleCategoryChange = useCallback((category: EmailCategory) => {
+    // If switching away from search, clear search mode
+    if (category !== 'search' && isSearchMode) {
+      setIsSearchMode(false)
+      setSearchQuery('')
+    }
+    
     setActiveCategory(category)
     
-    if (emails[category].length === 0 && !loading[category]) {
+    if (category !== 'search' && emails[category].length === 0 && !loading[category]) {
       fetchEmailsForCategory(category)
     }
-  }, [emails, loading, fetchEmailsForCategory])
+  }, [emails, loading, fetchEmailsForCategory, isSearchMode])
 
   const handleLoadMore = useCallback(() => {
     const token = pageTokens[activeCategory]
     if (token && !loading[activeCategory]) {
-      fetchEmailsForCategory(activeCategory, token, true)
+      if (activeCategory === 'search' && searchQuery) {
+        searchEmails(searchQuery, token, true)
+      } else {
+        fetchEmailsForCategory(activeCategory, token, true)
+      }
     }
-  }, [activeCategory, pageTokens, loading, fetchEmailsForCategory])
+  }, [activeCategory, pageTokens, loading, fetchEmailsForCategory, searchEmails, searchQuery])
 
   const handleRefresh = useCallback(() => {
     if (!loading[activeCategory]) {
@@ -273,10 +287,27 @@ export default function EmailsPage() {
     }
   }, [activeCategory, loading, refreshEmails])
 
-  const currentEmails = useMemo(() => 
-    emails[activeCategory] || [], 
-    [emails, activeCategory]
-  )
+  const handleSearch = useCallback(async (query: string) => {
+    setSearchQuery(query)
+    setIsSearchMode(true)
+    setActiveCategory('search')
+    await searchEmails(query)
+  }, [searchEmails])
+
+  const handleClearSearch = useCallback(() => {
+    setSearchQuery('')
+    setIsSearchMode(false)
+    setActiveCategory('inbox')
+    // Clear search results
+    dispatchEmails({ type: 'SET_EMAILS', category: 'search', emails: [] })
+  }, [dispatchEmails])
+
+  const currentEmails = useMemo(() => {
+    if (isSearchMode && activeCategory === 'search') {
+      return emails.search || []
+    }
+    return emails[activeCategory] || []
+  }, [emails, activeCategory, isSearchMode])
 
   const isLoading = loading[activeCategory]
   const hasMore = !!pageTokens[activeCategory]
@@ -360,6 +391,18 @@ export default function EmailsPage() {
                 AI Mail
               </h1>
             </div>
+            
+            {/* Search Bar - Center */}
+            <div className="flex-1 max-w-2xl mx-4">
+              <EmailSearch
+                onSearch={handleSearch}
+                onClear={handleClearSearch}
+                placeholder="Search emails (e.g., 'from:john', 'has:attachment', 'important')..."
+                isSearching={loading.search}
+                searchQuery={searchQuery}
+              />
+            </div>
+            
             <div className="flex items-center space-x-3">
               <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-muted/50 text-xs">
                 <div className={`w-2 h-2 rounded-full ${
@@ -405,6 +448,7 @@ export default function EmailsPage() {
         onCategoryChange={handleCategoryChange}
         emailCounts={emailCounts}
         loading={loading}
+        isSearchMode={isSearchMode}
       />
 
       <main className="flex-1 overflow-hidden">

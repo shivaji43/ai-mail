@@ -9,14 +9,23 @@ export const CategoryFilter = memo(function CategoryFilter({
   activeCategory, 
   onCategoryChange, 
   emailCounts, 
-  loading 
+  loading,
+  isSearchMode = false
 }: CategoryFilterProps) {
-  const categories: CategoryDefinition[] = useMemo(() => [
-    { id: 'inbox', label: 'Inbox', icon: '📥' },
-    { id: 'starred', label: 'Starred', icon: '⭐' },
-    { id: 'spam', label: 'Spam', icon: '🚫' },
-    { id: 'trash', label: 'Trash', icon: '🗑️' },
-  ], [])
+  const categories: CategoryDefinition[] = useMemo(() => {
+    const baseCategories = [
+      { id: 'inbox', label: 'Inbox', icon: '📥' },
+      { id: 'starred', label: 'Starred', icon: '⭐' },
+      { id: 'spam', label: 'Spam', icon: '🚫' },
+      { id: 'trash', label: 'Trash', icon: '🗑️' },
+    ]
+    
+    if (isSearchMode) {
+      baseCategories.push({ id: 'search', label: 'Search Results', icon: '🔍' })
+    }
+    
+    return baseCategories
+  }, [isSearchMode])
 
   return (
     <div className="flex gap-2 p-4 bg-card border-b-4 border-gray-800 dark:border-gray-200">
