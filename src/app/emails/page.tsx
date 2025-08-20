@@ -23,6 +23,7 @@ export default function EmailsPage() {
   const [activeCategory, setActiveCategory] = useState<EmailCategory>('inbox')
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearchMode, setIsSearchMode] = useState(false)
+  const [useLocalSearch, setUseLocalSearch] = useState(false)
 
   const {
     emails,
@@ -33,6 +34,7 @@ export default function EmailsPage() {
     refreshEmails,
     fetchNewEmailsFromHistory,
     searchEmails,
+    filterEmailsLocally,
     emailCounts
   } = useEmails()
 
@@ -261,6 +263,7 @@ export default function EmailsPage() {
     if (category !== 'search' && isSearchMode) {
       setIsSearchMode(false)
       setSearchQuery('')
+      setUseLocalSearch(false)
     }
     
     setActiveCategory(category)
@@ -273,13 +276,14 @@ export default function EmailsPage() {
   const handleLoadMore = useCallback(() => {
     const token = pageTokens[activeCategory]
     if (token && !loading[activeCategory]) {
-      if (activeCategory === 'search' && searchQuery) {
+      if (activeCategory === 'search' && searchQuery && !useLocalSearch) {
         searchEmails(searchQuery, token, true)
-      } else {
+      } else if (activeCategory !== 'search' || !useLocalSearch) {
         fetchEmailsForCategory(activeCategory, token, true)
       }
+      // Local search doesn't support pagination - all results are already filtered
     }
-  }, [activeCategory, pageTokens, loading, fetchEmailsForCategory, searchEmails, searchQuery])
+  }, [activeCategory, pageTokens, loading, fetchEmailsForCategory, searchEmails, searchQuery, useLocalSearch])
 
   const handleRefresh = useCallback(() => {
     if (!loading[activeCategory]) {
@@ -290,13 +294,27 @@ export default function EmailsPage() {
   const handleSearch = useCallback(async (query: string) => {
     setSearchQuery(query)
     setIsSearchMode(true)
-    setActiveCategory('search')
-    await searchEmails(query)
-  }, [searchEmails])
+    
+    // For simple queries (single words without Gmail operators), try local search first
+    const isSimpleQuery = !query.includes(':') && !query.includes('@') && query.split(' ').length <= 2
+    
+    if (isSimpleQuery && emails.inbox.length > 0) {
+      // Use local search for simple queries on loaded emails
+      setUseLocalSearch(true)
+      setActiveCategory('search')
+      // The currentEmails useMemo will handle filtering
+    } else {
+      // Use Gmail API search for complex queries or when no emails are loaded
+      setUseLocalSearch(false)
+      setActiveCategory('search')
+      await searchEmails(query)
+    }
+  }, [searchEmails, emails.inbox.length])
 
   const handleClearSearch = useCallback(() => {
     setSearchQuery('')
     setIsSearchMode(false)
+    setUseLocalSearch(false)
     setActiveCategory('inbox')
     // Clear search results
     dispatchEmails({ type: 'SET_EMAILS', category: 'search', emails: [] })
@@ -304,10 +322,15 @@ export default function EmailsPage() {
 
   const currentEmails = useMemo(() => {
     if (isSearchMode && activeCategory === 'search') {
+      if (useLocalSearch && searchQuery) {
+        // Use local filtering for simple searches
+        return filterEmailsLocally(searchQuery, 'inbox')
+      }
+      // Use API search results
       return emails.search || []
     }
     return emails[activeCategory] || []
-  }, [emails, activeCategory, isSearchMode])
+  }, [emails, activeCategory, isSearchMode, useLocalSearch, searchQuery, filterEmailsLocally])
 
   const isLoading = loading[activeCategory]
   const hasMore = !!pageTokens[activeCategory]
@@ -454,6 +477,16 @@ export default function EmailsPage() {
       <main className="flex-1 overflow-hidden">
         <div className="h-full flex gap-4 p-4 sm:p-6 lg:p-8">
           <div className="w-2/5 flex flex-col min-h-0">
+            {isSearchMode && activeCategory === 'search' && (
+              <div className="mb-3 px-3 py-2 bg-muted/50 rounded-md border text-sm text-muted-foreground">
+                <span className="font-medium">
+                  {useLocalSearch ? '🔍 Local search' : '🌐 Gmail search'} 
+                </span>
+                {searchQuery && (
+                  <span> - &ldquo;{searchQuery}&rdquo; ({currentEmails.length} results)</span>
+                )}
+              </div>
+            )}
             <div className="flex-1 min-h-0">
               <VirtualizedEmailList
                 emails={currentEmails}

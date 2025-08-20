@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { Search, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { useDebounced } from '@/hooks/useDebounced'
 
 interface EmailSearchProps {
   onSearch: (query: string) => void
@@ -11,6 +12,8 @@ interface EmailSearchProps {
   placeholder?: string
   isSearching?: boolean
   searchQuery?: string
+  enableAutoSearch?: boolean
+  autoSearchDelay?: number
 }
 
 export function EmailSearch({ 
@@ -18,14 +21,24 @@ export function EmailSearch({
   onClear, 
   placeholder = "Search emails...", 
   isSearching = false,
-  searchQuery = ""
+  searchQuery = "",
+  enableAutoSearch = true,
+  autoSearchDelay = 800
 }: EmailSearchProps) {
   const [query, setQuery] = useState(searchQuery)
   const inputRef = useRef<HTMLInputElement>(null)
+  const debouncedQuery = useDebounced(query, autoSearchDelay)
 
   useEffect(() => {
     setQuery(searchQuery)
   }, [searchQuery])
+
+  // Auto-search with debouncing
+  useEffect(() => {
+    if (enableAutoSearch && debouncedQuery.trim() && debouncedQuery !== searchQuery) {
+      onSearch(debouncedQuery.trim())
+    }
+  }, [debouncedQuery, enableAutoSearch, searchQuery, onSearch])
 
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault()
