@@ -15,7 +15,7 @@ declare module "next-auth/jwt" {
 }
 
 // Email categories
-export type EmailCategory = 'inbox' | 'starred' | 'spam' | 'trash'
+export type EmailCategory = 'inbox' | 'starred' | 'spam' | 'trash' | 'search'
 
 // Email-related types
 export interface EmailMessage {
@@ -194,6 +194,7 @@ export interface EmailsState {
   starred: EmailMessage[]
   spam: EmailMessage[]
   trash: EmailMessage[]
+  search: EmailMessage[]
 }
 
 export interface LoadingState {
@@ -201,6 +202,7 @@ export interface LoadingState {
   starred: boolean
   spam: boolean
   trash: boolean
+  search: boolean
 }
 
 export interface PageTokensState {
@@ -208,6 +210,7 @@ export interface PageTokensState {
   starred: string | null
   spam: string | null
   trash: string | null
+  search: string | null
 }
 
 // Email reducer action types
@@ -298,6 +301,7 @@ export interface CategoryFilterProps {
   onCategoryChange: (category: EmailCategory) => void
   emailCounts: Record<EmailCategory, number>
   loading: Record<EmailCategory, boolean>
+  isSearchMode?: boolean
 }
 
 export interface StarButtonProps {
@@ -459,6 +463,8 @@ export interface UseEmailsReturn {
   refreshEmails: (category?: EmailCategory) => Promise<void>
   fetchNewEmailsFromHistory: (historyId: string, category?: EmailCategory) => Promise<void>
   addNewEmail: (messageId: string, category?: EmailCategory) => Promise<void>
+  searchEmails: (searchQuery: string, pageToken?: string, append?: boolean) => Promise<void>
+  filterEmailsLocally: (searchQuery: string, category?: EmailCategory) => EmailMessage[]
   emailCounts: Record<EmailCategory, number>
 }
 
@@ -469,4 +475,15 @@ export interface UseEmailContentReturn {
   markEmailAsRead: (emailId: string) => Promise<void>
   updateEmailStarStatus: (emailId: string, starred: boolean) => void
   clearSelection: () => void
+}
+
+// Email Search Component Props
+export interface EmailSearchProps {
+  onSearch: (query: string) => void
+  onClear: () => void
+  placeholder?: string
+  isSearching?: boolean
+  searchQuery?: string
+  enableAutoSearch?: boolean
+  autoSearchDelay?: number
 }

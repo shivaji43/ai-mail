@@ -3,20 +3,29 @@
 import { memo, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { CategoryFilterProps, CategoryDefinition } from '@/types/types'
+import { CategoryFilterProps, CategoryDefinition, EmailCategory } from '@/types/types'
 
 export const CategoryFilter = memo(function CategoryFilter({ 
   activeCategory, 
   onCategoryChange, 
   emailCounts, 
-  loading 
+  loading,
+  isSearchMode = false
 }: CategoryFilterProps) {
-  const categories: CategoryDefinition[] = useMemo(() => [
-    { id: 'inbox', label: 'Inbox', icon: '📥' },
-    { id: 'starred', label: 'Starred', icon: '⭐' },
-    { id: 'spam', label: 'Spam', icon: '🚫' },
-    { id: 'trash', label: 'Trash', icon: '🗑️' },
-  ], [])
+  const categories: CategoryDefinition[] = useMemo(() => {
+    const baseCategories: CategoryDefinition[] = [
+      { id: 'inbox' as EmailCategory, label: 'Inbox', icon: '📥' },
+      { id: 'starred' as EmailCategory, label: 'Starred', icon: '⭐' },
+      { id: 'spam' as EmailCategory, label: 'Spam', icon: '🚫' },
+      { id: 'trash' as EmailCategory, label: 'Trash', icon: '🗑️' },
+    ]
+    
+    if (isSearchMode) {
+      baseCategories.push({ id: 'search' as EmailCategory, label: 'Search Results', icon: '🔍' })
+    }
+    
+    return baseCategories
+  }, [isSearchMode])
 
   return (
     <div className="flex gap-2 p-4 bg-card border-b-4 border-gray-800 dark:border-gray-200">

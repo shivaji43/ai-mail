@@ -9,28 +9,32 @@ import {
   PageTokensAction,
   EmailCategory,
   EmailsResponse,
-  UseEmailsReturn
+  UseEmailsReturn,
+  EmailMessage
 } from '@/types/types'
 import { getCachedEmailList, cacheEmailList, clearEmailCacheForCategory } from '@/lib/cache'
 const initialEmailsState: EmailsState = {
   inbox: [],
   starred: [],
   spam: [],
-  trash: []
+  trash: [],
+  search: []
 }
 
 const initialLoadingState: LoadingState = {
   inbox: false,
   starred: false,
   spam: false,
-  trash: false
+  trash: false,
+  search: false
 }
 
 const initialPageTokensState: PageTokensState = {
   inbox: null,
   starred: null,
   spam: null,
-  trash: null
+  trash: null,
+  search: null
 }
 
 // Reducers
@@ -322,12 +326,79 @@ export function useEmails(): UseEmailsReturn {
     }
   }, [session, dispatchEmails])
 
+  const searchEmails = useCallback(async (
+    searchQuery: string,
+    pageToken?: string,
+    append = false
+  ): Promise<void> => {
+    if (!session?.accessToken || !searchQuery.trim()) return
+
+    const category: EmailCategory = 'search'
+    dispatchLoading({ type: 'SET_LOADING', category, loading: true })
+
+    try {
+      const params = new URLSearchParams({
+        category: 'inbox', // Use inbox as base category for API, but use search query
+        maxResults: '50',
+        search: searchQuery.trim(),
+        ...(pageToken && { pageToken }),
+      })
+
+      const response = await fetch(`/api/emails?${params}`)
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        
+        if (response.status === 401 && errorData.needsReauth) {
+          window.location.href = '/api/auth/signin?callbackUrl=' + encodeURIComponent(window.location.href)
+          return
+        }
+        
+        throw new Error(errorData.error || `HTTP ${response.status}: Failed to search emails`)
+      }
+
+      const data: EmailsResponse & { cached?: boolean; responseTime?: number } = await response.json()
+      
+      if (append) {
+        dispatchEmails({ type: 'APPEND_EMAILS', category, emails: data.messages })
+      } else {
+        dispatchEmails({ type: 'SET_EMAILS', category, emails: data.messages })
+      }
+
+      dispatchPageTokens({
+        type: 'SET_TOKEN',
+        category,
+        token: data.nextPageToken || null
+      })
+    } catch (error) {
+      console.error('Failed to search emails:', error)
+      
+      if (error instanceof Error && error.message.includes('Authentication expired')) {
+        window.location.href = '/api/auth/signin?callbackUrl=' + encodeURIComponent(window.location.href)
+      }
+    } finally {
+      dispatchLoading({ type: 'SET_LOADING', category, loading: false })
+    }
+  }, [session])
+
+  const filterEmailsLocally = useCallback((searchQuery: string, category: EmailCategory = 'inbox'): EmailMessage[] => {
+    if (!searchQuery.trim()) return emails[category]
+    
+    const query = searchQuery.toLowerCase()
+    return emails[category].filter(email => 
+      email.subject.toLowerCase().includes(query) ||
+      email.from.toLowerCase().includes(query) ||
+      email.snippet.toLowerCase().includes(query)
+    )
+  }, [emails])
+
   const emailCounts = useMemo(() => {
     const counts: Record<EmailCategory, number> = {
       inbox: emails.inbox.length,
       starred: emails.starred.length,
       spam: emails.spam.length,
-      trash: emails.trash.length
+      trash: emails.trash.length,
+      search: emails.search.length
     }
     return counts
   }, [emails])
@@ -343,6 +414,8 @@ export function useEmails(): UseEmailsReturn {
     refreshEmails,
     fetchNewEmailsFromHistory,
     addNewEmail,
+    searchEmails,
+    filterEmailsLocally,
     emailCounts
   }
 } 
