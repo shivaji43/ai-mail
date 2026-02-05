@@ -104,9 +104,13 @@ export async function GET(request: NextRequest) {
     const maxResults = Math.min(parseInt(searchParams.get('maxResults') || '50'), 50)
     const category = (searchParams.get('category') || 'inbox') as EmailCategory
     const forceRefresh = searchParams.get('forceRefresh') === 'true'
+    const searchQuery = searchParams.get('search') || ''
     const userId = session.user?.email || 'anonymous'
 
-    const cacheKey = getCacheKey(category, pageToken, userId)
+    // Include search query in cache key to ensure different results are cached separately
+    const cacheKey = searchQuery 
+      ? `${userId}:search:${encodeURIComponent(searchQuery)}:${pageToken || 'first'}`
+      : getCacheKey(category, pageToken, userId)
     const cachedData = emailCache.get(cacheKey)
     
     // Skip cache if force refresh is requested
@@ -118,21 +122,37 @@ export async function GET(request: NextRequest) {
       })
     }
 
-
     let query = ''
-    switch (category) {
-      case 'inbox':
-        query = 'in:inbox -in:spam -in:trash'
-        break
-      case 'starred':
-        query = 'is:starred -in:trash'
-        break
-      case 'spam':
-        query = 'in:spam'
-        break
-      case 'trash':
-        query = 'in:trash'
-        break
+    
+    // If there's a search query, use it directly (Gmail search supports natural language)
+    if (searchQuery) {
+      // Combine user search with basic filtering to exclude spam/trash unless explicitly searched
+      const userQuery = searchQuery.trim()
+      // Check if user is explicitly searching in spam/trash
+      const isSearchingSpamTrash = userQuery.includes('in:spam') || userQuery.includes('in:trash')
+      
+      if (isSearchingSpamTrash) {
+        query = userQuery
+      } else {
+        // Default to excluding spam and trash unless explicitly included
+        query = `${userQuery} -in:spam -in:trash`
+      }
+    } else {
+      // Default category-based queries
+      switch (category) {
+        case 'inbox':
+          query = 'in:inbox -in:spam -in:trash'
+          break
+        case 'starred':
+          query = 'is:starred -in:trash'
+          break
+        case 'spam':
+          query = 'in:spam'
+          break
+        case 'trash':
+          query = 'in:trash'
+          break
+      }
     }
 
     const listUrl = `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${maxResults}${pageToken ? `&pageToken=${pageToken}` : ''}${query ? `&q=${encodeURIComponent(query)}` : ''}`

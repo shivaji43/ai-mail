@@ -32,6 +32,7 @@ export function useDebouncedCallback<T extends (...args: unknown[]) => unknown>(
     return () => {
       clearTimeout(handler)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [callback, delay, ...deps])
 
   return (debouncedCallback || callback) as T
